@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Cinematic Christmas – Final Gold</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+html,body{
+  margin:0;
+  width:100%;
+  height:100%;
+  overflow:hidden;
+  background:black;
+  font-family:"Segoe UI",system-ui;
+}
+canvas{display:block}
+
+#ui{
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+}
+
+#text{
+  position:absolute;
+  top:65%;
+  width:100%;
+  text-align:center;
+  font-size:36px;
+  color:#ffd87d;
+  opacity:0;
+  transition:3s ease;
+  text-shadow:0 0 40px gold;
+}
+
+#btn{
+  position:absolute;
+  top:75%;
+  left:50%;
+  transform:translateX(-50%);
+  padding:14px 32px;
+  background:linear-gradient(135deg,#ffd700,#ffae00);
+  border:none;
+  border-radius:10px;
+  font-size:16px;
+  cursor:pointer;
+  opacity:0;
+  pointer-events:auto;
+  box-shadow:0 0 25px gold;
+}
+</style>
+</head>
+
+<body>
+
+<div id="ui">
+  <div id="text">
+    Merry Christmas Wishes<br>
+    <span style="font-size:22px">
+      அன்பான ஆசிரியருக்கு கிரிஸ்துமஸ் வாழ்த்துகள் ✨
+    </span>
+  </div>
+  <button id="btn">🎁 Get a Gift</button>
+</div>
+
+<script type="module">
+import * as THREE from "https://cdn.jsdelivr.net/npm/three@0.158/build/three.module.js";
+import { GLTFLoader } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/loaders/GLTFLoader.js";
+import { Water } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/objects/Water.js";
+import { EffectComposer } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "https://cdn.jsdelivr.net/npm/three@0.158/examples/jsm/postprocessing/UnrealBloomPass.js";
+
+/* ================= SCENE ================= */
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x000814, 60, 260);
+
+/* CAMERA */
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 800);
+camera.position.set(0,14,85);
+
+/* RENDERER */
+const renderer = new THREE.WebGLRenderer({antialias:true});
+renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(devicePixelRatio);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+
+/* POST PROCESS */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene,camera));
+composer.addPass(
+  new UnrealBloomPass(
+    new THREE.Vector2(innerWidth,innerHeight),
+    1.4, 0.45, 0.85
+  )
+);
+
+/* LIGHTS */
+scene.add(new THREE.AmbientLight(0x404040,1.4));
+const moonLight = new THREE.DirectionalLight(0xffffff,2.4);
+moonLight.position.set(-50,70,50);
+scene.add(moonLight);
+
+/* MOON */
+const moon = new THREE.Mesh(
+  new THREE.SphereGeometry(7,32,32),
+  new THREE.MeshStandardMaterial({
+    emissive:0xcce6ff,
+    emissiveIntensity:0.6
+  })
+);
+moon.position.set(-25,40,-160);
+scene.add(moon);
+
+/* WATER (REFLECTION SHADER) */
+const water = new Water(
+  new THREE.PlaneGeometry(500,500),
+  {
+    textureWidth:1024,
+    textureHeight:1024,
+    color:0x0a1d3a,
+    flowDirection:new THREE.Vector2(1,1),
+    scale:4
+  }
+);
+water.rotation.x = -Math.PI/2;
+water.position.y = -3;
+scene.add(water);
+
+/* STARS */
+const starGeo = new THREE.BufferGeometry();
+const starPos = [];
+for(let i=0;i<1800;i++){
+  starPos.push(
+    (Math.random()-0.5)*500,
+    Math.random()*240,
+    -Math.random()*500
+  );
+}
+starGeo.setAttribute("position",
+  new THREE.Float32BufferAttribute(starPos,3)
+);
+scene.add(
+  new THREE.Points(
+    starGeo,
+    new THREE.PointsMaterial({color:0xffffff,size:0.9})
+  )
+);
+
+/* BIG STAR */
+const bigStar = new THREE.Mesh(
+  new THREE.IcosahedronGeometry(2.2,2),
+  new THREE.MeshStandardMaterial({
+    emissive:0xffb300,
+    emissiveIntensity:4
+  })
+);
+bigStar.position.set(0,90,-50);
+scene.add(bigStar);
+
+/* TREE GROUP */
+const tree = new THREE.Group();
+tree.visible = false;
+scene.add(tree);
+
+/* NEEDLE FOLIAGE (DENSE PINE) */
+const needleGeo = new THREE.CylinderGeometry(0.05,0.1,2,6);
+const needleMat = new THREE.MeshStandardMaterial({color:0x0b5d2a});
+const needles = new THREE.InstancedMesh(needleGeo,needleMat,1100);
+
+let idx = 0;
+for(let y=0;y<14;y++){
+  const radius = 12 - y*0.8;
+  for(let a=0;a<Math.PI*2;a+=0.28){
+    const m = new THREE.Matrix4();
+    m.makeRotationZ(Math.random()*Math.PI);
+    m.setPosition(
+      Math.sin(a)*radius,
+      y*1.15,
+      Math.cos(a)*radius
+    );
+    needles.setMatrixAt(idx++,m);
+  }
+}
+tree.add(needles);
+
+/* TRUNK */
+const trunk = new THREE.Mesh(
+  new THREE.CylinderGeometry(1.4,1.6,8),
+  new THREE.MeshStandardMaterial({color:0x4b2e1a})
+);
+trunk.position.y = -6;
+tree.add(trunk);
+
+/* TOP STAR */
+const topStar = new THREE.Mesh(
+  new THREE.OctahedronGeometry(1.8),
+  new THREE.MeshStandardMaterial({
+    emissive:0xffd700,
+    emissiveIntensity:3.5
+  })
+);
+topStar.position.y = 18;
+tree.add(topStar);
+
+/* GIFT BOX */
+const gift = new THREE.Mesh(
+  new THREE.BoxGeometry(3.5,3.5,3.5),
+  new THREE.MeshStandardMaterial({color:0xd4002a})
+);
+gift.position.set(0,-6,10);
+tree.add(gift);
+
+/* REAL SANTA MODEL */
+const loader = new GLTFLoader();
+let santa;
+loader.load(
+  "https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/master/2.0/SantaClaus/glTF/SantaClaus.gltf",
+  g=>{
+    santa = g.scene;
+    santa.scale.set(3,3,3);
+    santa.position.set(0,0,35);
+    santa.visible = false;
+    scene.add(santa);
+  }
+);
+
+/* ANIMATION FLOW */
+let phase = 0;
+let dolly = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+
+  water.material.uniforms.time.value += 0.015;
+
+  if(phase === 0){
+    bigStar.position.y -= 0.4;
+    camera.lookAt(bigStar.position);
+    if(bigStar.position.y < 10){
+      phase = 1;
+      scene.remove(bigStar);
+      tree.visible = true;
+      document.getElementById("text").style.opacity = 1;
+      document.getElementById("btn").style.opacity = 1;
+    }
+  }
+
+  /* CAMERA DOLLY */
+  if(dolly < 1){
+    camera.position.z -= 0.14;
+    dolly += 0.002;
+  }
+
+  tree.rotation.y += 0.002;
+  topStar.rotation.y += 0.035;
+
+  composer.render();
+}
+animate();
+
+/* BUTTON INTERACTION */
+document.getElementById("btn").onclick = ()=>{
+  if(santa){
+    santa.visible = true;
+    santa.position.z = 22;
+  }
+  gift.scale.set(1.2,1.2,1.2);
+  setTimeout(()=>gift.scale.set(1,1,1),400);
+
+  alert("🎅\nஉங்கள் வாழ்க்கையில் ஒளி, அமைதி மற்றும் வெற்றி நிலைத்திருக்க வாழ்த்துகள் ✨");
+};
+
+/* RESIZE */
+addEventListener("resize",()=>{
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+  composer.setSize(innerWidth,innerHeight);
+});
+</script>
+
+</body>
+</html>
